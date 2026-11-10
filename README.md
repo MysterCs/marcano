@@ -227,3 +227,4 @@ npm test
 ## Alcance de esta base
 
 Incluye el panel de control ejecutable, persistencia, autenticacion, operaciones de inventario, API, cliente Flutter, proyecciones mensuales y pruebas. Los roles, la sincronizacion sin conexion, las migraciones Alembic y los reportes graficos quedan como siguientes incrementos, no como funciones ya terminadas.
+
