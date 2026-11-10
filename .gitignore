@@ -1,0 +1,40 @@
+# Entornos y configuracion local
+.venv/
+.tools/
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# Node
+node_modules/
+
+# Flutter/Dart
+flutter_app/.dart_tool/
+flutter_app/build/
+flutter_app/.flutter-plugins*
+flutter_app/.packages
+
+# Datos locales
+data/*.db
+data/*.db-*
+data/postgresql/
+data/postgresql.log
+data/logs/
+.env.db
+
+# Panel de control ejecutable
+/MarcanoControl.exe
+
+# VPN
+*.conf
+wg-*.conf
+*.ovpn
