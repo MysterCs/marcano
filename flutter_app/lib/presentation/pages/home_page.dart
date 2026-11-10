@@ -10,6 +10,7 @@ import '../widgets/rate/system_rate_badge.dart';
 import 'dashboard_page.dart';
 import 'projections_page.dart';
 import 'settings_page.dart';
+import 'statistics_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -44,12 +45,14 @@ class _HomePageState extends State<HomePage> {
           repository: widget.repository,
           preferences: _preferences,
         ),
+        StatisticsPage(repository: widget.repository),
         ProjectionsPage(repository: widget.repository),
         SettingsPage(
           authController: widget.authController,
           apiClient: widget.apiClient,
           rateRepository: widget.rateRepository,
           preferences: _preferences,
+          inventoryRepository: widget.repository,
         ),
       ];
 
@@ -58,7 +61,27 @@ class _HomePageState extends State<HomePage> {
     final pages = _pages;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Marcano Inventario'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFE11D48), Color(0xFFF97316)],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.inventory_2_rounded,
+                size: 18,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('Marcano Inventario'),
+          ],
+        ),
         actions: [
           SystemRateBadge(rateRepository: widget.rateRepository),
           IconButton(
@@ -69,7 +92,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      body: IndexedStack(index: _selectedIndex, children: pages),
+      body: pages[_selectedIndex],
       bottomNavigationBar: HomeNavBar(
         selectedIndex: _selectedIndex,
         onDestinationSelected: (index) =>

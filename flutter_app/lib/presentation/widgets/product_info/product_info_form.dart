@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/categories/product_category_helper.dart';
+
 /// Seccion de campos editables del producto.
 ///
 /// Recibe los controladores desde el widget orquestador y gestiona la
@@ -7,6 +9,7 @@ import 'package:flutter/material.dart';
 class ProductInfoForm extends StatelessWidget {
   const ProductInfoForm({
     required this.name,
+    required this.category,
     required this.model,
     required this.stock,
     required this.minStock,
@@ -18,10 +21,12 @@ class ProductInfoForm extends StatelessWidget {
     required this.editing,
     required this.formKey,
     required this.onActiveChanged,
+    required this.onCategoryChanged,
     super.key,
   });
 
   final TextEditingController name;
+  final String category;
   final TextEditingController model;
   final TextEditingController stock;
   final TextEditingController minStock;
@@ -33,6 +38,7 @@ class ProductInfoForm extends StatelessWidget {
   final bool editing;
   final GlobalKey<FormState> formKey;
   final ValueChanged<bool> onActiveChanged;
+  final ValueChanged<String> onCategoryChanged;
 
   String? _validateRequired(String? value) =>
       (value == null || value.trim().isEmpty) ? 'Campo obligatorio.' : null;
@@ -68,7 +74,33 @@ class ProductInfoForm extends StatelessWidget {
               readOnly: !editing,
               enabled: editing,
               validator: _validateRequired,
+              onChanged: editing
+                  ? (val) => onCategoryChanged(
+                        ProductCategoryHelper.inferCategory(val),
+                      )
+                  : null,
               decoration: const InputDecoration(labelText: 'Nombre'),
+            ),
+            const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue:
+                  ProductCategoryHelper.allCategories.contains(category)
+                      ? category
+                      : ProductCategoryHelper.defaultCategory,
+              onChanged: editing
+                  ? (val) {
+                      if (val != null) onCategoryChanged(val);
+                    }
+                  : null,
+              decoration: const InputDecoration(labelText: 'Categoría'),
+              items: ProductCategoryHelper.allCategories
+                  .map(
+                    (cat) => DropdownMenuItem<String>(
+                      value: cat,
+                      child: Text(cat),
+                    ),
+                  )
+                  .toList(),
             ),
             const SizedBox(height: 12),
             TextFormField(

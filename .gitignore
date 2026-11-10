@@ -33,6 +33,7 @@ data/logs/
 
 # Panel de control ejecutable
 /MarcanoControl.exe
+/MarcanoControl
 
 # VPN
 *.conf

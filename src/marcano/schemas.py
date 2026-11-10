@@ -9,6 +9,7 @@ from marcano.domain.entities import MovementType
 class ProductCreate(BaseModel):
     sku: str = Field(min_length=1, max_length=50)
     name: str = Field(min_length=1, max_length=255)
+    category: str | None = Field(default=None, max_length=100)
     initial_stock: int = Field(default=0, ge=0)
     min_stock: int = Field(default=0, ge=0)
     unit_cost: Decimal = Field(default=Decimal("0.00"), ge=0)
@@ -29,6 +30,7 @@ class ProductRead(BaseModel):
     id: int
     sku: str
     name: str
+    category: str = "Otros / General"
     model: str | None
     stock: int
     min_stock: int
@@ -44,6 +46,7 @@ class ProductRead(BaseModel):
 
 class ProductUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
+    category: str | None = Field(default=None, min_length=1, max_length=100)
     model: str | None = Field(default=None, max_length=120)
     stock: int | None = Field(default=None, ge=0)
     min_stock: int | None = Field(default=None, ge=0)
@@ -53,7 +56,7 @@ class ProductUpdate(BaseModel):
     unit_cost: Decimal | None = Field(default=None, ge=0)
     sale_price: Decimal | None = Field(default=None, ge=0)
 
-    @field_validator("name", "model", "unit")
+    @field_validator("name", "category", "model", "unit")
     @classmethod
     def strip_required_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -182,3 +185,83 @@ class AlternateCurrencyRead(BaseModel):
 
 class AlternateCurrencyValueUpdate(BaseModel):
     value: Decimal = Field(ge=0)
+
+
+class MetricDistributionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    mean: float
+    median: float
+    mode: float
+    std_dev: float
+    variance: float
+    minimum: float
+    maximum: float
+    p25: float
+    p75: float
+    p90: float
+    iqr: float
+    cv: float
+
+
+class StockHealthSummaryRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    optimal_count: int
+    low_stock_count: int
+    out_of_stock_count: int
+    inactive_count: int
+
+
+class CategoryStatRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    category: str
+    product_count: int
+    total_units: int
+    total_value: float
+    share_percentage: float
+    low_stock_count: int
+    avg_stock: float
+    avg_unit_cost: float
+
+
+class TopProductStatRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    sku: str
+    name: str
+    category: str
+    stock: int
+    unit_cost: float
+    total_value: float
+
+
+class MonthlyRotationPointRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    period: str
+    entries: float
+    exits: float
+
+
+class DescriptiveStatisticsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    total_products: int
+    total_units: int
+    total_inventory_value: float
+    active_categories: int
+    stock_distribution: MetricDistributionRead
+    cost_distribution: MetricDistributionRead
+    value_distribution: MetricDistributionRead
+    stock_health: StockHealthSummaryRead
+    categories: list[CategoryStatRead]
+    top_by_value: list[TopProductStatRead]
+    top_by_stock: list[TopProductStatRead]
+    monthly_rotation: list[MonthlyRotationPointRead]
+
+
+class ReclassifyResultRead(BaseModel):
+    updated: int

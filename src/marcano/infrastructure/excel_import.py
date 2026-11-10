@@ -7,6 +7,7 @@ from openpyxl import load_workbook
 from sqlalchemy import insert, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from marcano.domain.categories import infer_category
 from marcano.infrastructure.models import InventoryMovement, Product
 
 
@@ -71,6 +72,7 @@ class ExcelImporter:
                     products[item.sku] = product
                 product.model = item.model
                 product.name = item.name
+                product.category = infer_category(item.name)
                 product.point = item.point
                 product.stock = item.stock
                 product.unit = item.unit
@@ -85,6 +87,7 @@ class ExcelImporter:
                     products[sku] = product
                 product.model = latest.model
                 product.name = latest.name
+                product.category = infer_category(latest.name)
                 product.stock = 0
                 product.unit = latest.unit
                 product.is_active = False

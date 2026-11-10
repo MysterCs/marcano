@@ -41,6 +41,24 @@ class ApiClient {
     return _decode(response);
   }
 
+  Future<List<int>> getBytes(
+    String path, {
+    Map<String, String>? queryParameters,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path').replace(
+      queryParameters: queryParameters,
+    );
+    final response = await _httpClient.get(uri, headers: _headers());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      if (response.statusCode == 401) onUnauthorized?.call();
+      throw ApiException(
+        'Error al descargar el archivo (${response.statusCode})',
+        response.statusCode,
+      );
+    }
+    return response.bodyBytes;
+  }
+
   Future<dynamic> postJson(String path, Map<String, dynamic> body) async {
     final response = await _httpClient.post(
       Uri.parse('$baseUrl$path'),

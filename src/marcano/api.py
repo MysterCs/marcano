@@ -4,10 +4,11 @@ from typing import Annotated
 import uvicorn
 from fastapi import Depends, FastAPI, Query, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from marcano.config import get_settings
+from marcano.domain.categories import ALL_CATEGORIES, infer_category
 from marcano.domain.entities import MovementType, ProjectionPoint
 from marcano.domain.exceptions import (
     AuthenticationError,
@@ -29,6 +30,7 @@ from marcano.schemas import (
     AlternateCurrencyRead,
     AlternateCurrencyValueUpdate,
     BcvCurrencyRead,
+    DescriptiveStatisticsRead,
     DollarRateRead,
     HealthRead,
     InventorySummaryRead,
@@ -39,6 +41,7 @@ from marcano.schemas import (
     ProductUpdate,
     ProjectionPointRead,
     PurchaseCreate,
+    ReclassifyResultRead,
     SaleCreate,
     TokenRead,
     UserCreate,
@@ -50,6 +53,7 @@ from marcano.services.currency_service import CurrencyService
 from marcano.services.inventory_service import InventoryService
 from marcano.services.projection_service import ProjectionService
 from marcano.services.rate_service import RateService
+from marcano.services.statistics_service import StatisticsService
 
 
 @lru_cache
@@ -82,6 +86,12 @@ def get_projection_service(
     repository: Annotated[InventoryRepository, Depends(get_repository)],
 ) -> ProjectionService:
     return ProjectionService(repository)
+
+
+def get_statistics_service(
+    repository: Annotated[InventoryRepository, Depends(get_repository)],
+) -> StatisticsService:
+    return StatisticsService(repository)
 
 
 def get_auth_service(
@@ -213,8 +223,45 @@ def create_app() -> FastAPI:
     def list_products(
         service: Annotated[InventoryService, Depends(get_inventory_service)],
         _current_user: Annotated[User, Depends(get_current_user)],
+        category: str | None = None,
+        search: str | None = None,
     ) -> list[ProductRead]:
-        return [ProductRead.model_validate(product) for product in service.list_products()]
+        products = service.list_products()
+        result: list[ProductRead] = []
+        target_cat = category.strip().lower() if category and category.strip() else None
+        target_search = search.strip().lower() if search and search.strip() else None
+
+        for product in products:
+            dto = ProductRead.model_validate(product)
+            if not dto.category or dto.category == "Otros / General":
+                dto.category = getattr(product, "category", None) or infer_category(product.name)
+            if target_cat and target_cat != "todas" and dto.category.lower() != target_cat:
+                continue
+            if target_search and (
+                target_search not in dto.name.lower()
+                and target_search not in dto.sku.lower()
+                and target_search not in (dto.model or "").lower()
+            ):
+                continue
+            result.append(dto)
+        return result
+
+    @app.get("/api/categories", response_model=list[str], tags=["inventario"])
+    def list_categories(
+        _current_user: Annotated[User, Depends(get_current_user)],
+    ) -> list[str]:
+        return list(ALL_CATEGORIES)
+
+    @app.post(
+        "/api/categories/reclassify",
+        response_model=ReclassifyResultRead,
+        tags=["inventario"],
+    )
+    def reclassify_categories(
+        service: Annotated[InventoryService, Depends(get_inventory_service)],
+        _current_user: Annotated[User, Depends(get_current_user)],
+    ) -> ReclassifyResultRead:
+        return ReclassifyResultRead(updated=service.reclassify_categories())
 
     @app.post(
         "/api/products",
@@ -399,6 +446,45 @@ def create_app() -> FastAPI:
         strategy: str = "moving_average",
     ) -> list[ProjectionPoint]:
         return service.project(product_id, movement, periods, strategy)
+
+    @app.get(
+        "/api/statistics/descriptive",
+        response_model=DescriptiveStatisticsRead,
+        tags=["estadisticas"],
+    )
+    def descriptive_statistics(
+        service: Annotated[StatisticsService, Depends(get_statistics_service)],
+        _current_user: Annotated[User, Depends(get_current_user)],
+        category: str | None = None,
+    ) -> DescriptiveStatisticsRead:
+        report = service.descriptive_report(category=category)
+        return DescriptiveStatisticsRead.model_validate(report)
+
+    @app.get(
+        "/api/statistics/export",
+        tags=["estadisticas"],
+    )
+    def export_statistics(
+        service: Annotated[StatisticsService, Depends(get_statistics_service)],
+        _current_user: Annotated[User, Depends(get_current_user)],
+        format: str = Query(default="xlsx", pattern="^(xlsx|csv)$"),
+        category: str | None = None,
+    ) -> Response:
+        if format == "csv":
+            payload = service.export_csv(category=category)
+            csv_disp = 'attachment; filename="estadisticas_inventario_marcano.csv"'
+            return Response(
+                content=payload,
+                media_type="text/csv; charset=utf-8",
+                headers={"Content-Disposition": csv_disp},
+            )
+        payload = service.export_excel(category=category)
+        xlsx_disp = 'attachment; filename="estadisticas_inventario_marcano.xlsx"'
+        return Response(
+            content=payload,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": xlsx_disp},
+        )
 
     return app
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/categories/product_category_helper.dart';
 import '../../data/models/inventory_summary.dart';
 import '../../data/models/product.dart';
 import '../../data/services/app_preferences.dart';
@@ -25,7 +26,10 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   late Future<_DashboardData> _data;
+  final TextEditingController _searchController = TextEditingController();
   int _currentPage = 0;
+  String _selectedCategory = 'Todas';
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -37,6 +41,7 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     widget.preferences.removeListener(_onPreferencesChanged);
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -64,6 +69,25 @@ class _DashboardPageState extends State<DashboardPage> {
     if (saved ?? false) _refresh();
   }
 
+  List<Product> _filterProducts(List<Product> all) {
+    final q = _searchQuery.trim().toLowerCase();
+    return all.where((p) {
+      if (_selectedCategory != 'Todas' && p.category != _selectedCategory) {
+        return false;
+      }
+      if (q.isNotEmpty) {
+        final matchName = p.name.toLowerCase().contains(q);
+        final matchSku = p.sku.toLowerCase().contains(q);
+        final matchModel = (p.model ?? '').toLowerCase().contains(q);
+        final matchCat = p.category.toLowerCase().contains(q);
+        if (!matchName && !matchSku && !matchModel && !matchCat) {
+          return false;
+        }
+      }
+      return true;
+    }).toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) => FutureBuilder<_DashboardData>(
         future: _data,
@@ -79,32 +103,120 @@ class _DashboardPageState extends State<DashboardPage> {
           }
 
           final data = snapshot.requireData;
+          final filtered = _filterProducts(data.products);
           final pageSize = widget.preferences.pageSize;
           final totalPages =
-              (data.products.length / pageSize).ceil().clamp(1, 1 << 31);
+              (filtered.length / pageSize).ceil().clamp(1, 1 << 31);
           final page = _currentPage.clamp(0, totalPages - 1);
           final start = page * pageSize;
           final end = start + pageSize;
-          final visibleProducts = data.products.sublist(
-            start,
-            end > data.products.length ? data.products.length : end,
-          );
+          final visibleProducts = filtered.isEmpty
+              ? const <Product>[]
+              : filtered.sublist(
+                  start,
+                  end > filtered.length ? filtered.length : end,
+                );
+
+          final categoryCounts = <String, int>{'Todas': data.products.length};
+          for (final p in data.products) {
+            categoryCounts[p.category] = (categoryCounts[p.category] ?? 0) + 1;
+          }
+          final categories = [
+            'Todas',
+            ...ProductCategoryHelper.allCategories
+                .where((c) => (categoryCounts[c] ?? 0) > 0),
+          ];
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  onPressed: _refresh,
-                  icon: const Icon(Icons.refresh),
-                  tooltip: 'Actualizar',
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Resumen de Inventario',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  IconButton(
+                    onPressed: _refresh,
+                    icon: const Icon(Icons.refresh),
+                    tooltip: 'Actualizar',
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              DashboardSummaryGrid(summary: data.summary),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Productos (${filtered.length})',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() {
+                  _searchQuery = value;
+                  _currentPage = 0;
+                }),
+                decoration: InputDecoration(
+                  isDense: true,
+                  hintText: 'Buscar por nombre, SKU, modelo o categoría...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchQuery = '';
+                              _currentPage = 0;
+                            });
+                          },
+                        ),
                 ),
               ),
-              const SizedBox(height: 16),
-              DashboardSummaryGrid(summary: data.summary),
-              const SizedBox(height: 24),
-              Text('Productos', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (var i = 0; i < categories.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 8),
+                      ChoiceChip(
+                        avatar: categories[i] == 'Todas'
+                            ? const Icon(Icons.apps_rounded, size: 16)
+                            : Icon(
+                                ProductCategoryHelper.styleFor(categories[i])
+                                    .icon,
+                                size: 16,
+                                color: ProductCategoryHelper.styleFor(
+                                  categories[i],
+                                ).color,
+                              ),
+                        label: Text(
+                          '${categories[i]} (${categoryCounts[categories[i]] ?? 0})',
+                        ),
+                        selected: _selectedCategory == categories[i],
+                        onSelected: (_) => setState(() {
+                          _selectedCategory = categories[i];
+                          _currentPage = 0;
+                        }),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
               const SizedBox(height: 8),
               if (data.products.isEmpty)
                 const Card(
@@ -114,6 +226,15 @@ class _DashboardPageState extends State<DashboardPage> {
                         Text('Todavia no hay productos. Crealos desde la API.'),
                   ),
                 )
+              else if (visibleProducts.isEmpty)
+                const Card(
+                  child: Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text(
+                      'No se encontraron productos con los filtros seleccionados.',
+                    ),
+                  ),
+                )
               else
                 ...visibleProducts.map(
                   (product) => ProductCard(
@@ -121,12 +242,12 @@ class _DashboardPageState extends State<DashboardPage> {
                     onOpenInfo: () => _openProduct(product),
                   ),
                 ),
-              if (data.products.isNotEmpty) ...[
+              if (filtered.isNotEmpty) ...[
                 const SizedBox(height: 12),
                 PaginationBar(
                   currentPage: page,
                   totalPages: totalPages,
-                  totalItems: data.products.length,
+                  totalItems: filtered.length,
                   pageSize: pageSize,
                   onPageSelected: _goToPage,
                 ),

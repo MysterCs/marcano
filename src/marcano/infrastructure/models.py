@@ -34,6 +34,7 @@ class Product(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     sku: Mapped[str] = mapped_column(String(100), unique=True, index=True)
     name: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(100), default="Otros / General", index=True)
     model: Mapped[str | None] = mapped_column(String(120))
     stock: Mapped[int] = mapped_column(default=0)
     min_stock: Mapped[int] = mapped_column(default=0)

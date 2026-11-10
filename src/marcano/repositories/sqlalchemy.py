@@ -5,6 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
+from marcano.domain.categories import infer_category
 from marcano.domain.entities import MovementRecord
 from marcano.domain.exceptions import (
     DuplicateSKUError,
@@ -38,12 +39,15 @@ class SQLAlchemyInventoryRepository(InventoryRepository):
         min_stock: int,
         unit_cost: Decimal,
         sale_price: Decimal,
+        category: str | None = None,
     ) -> Product:
+        resolved_category = (category or "").strip() or infer_category(name)
         try:
             with self._session_factory() as session, session.begin():
                 product = Product(
                     sku=sku,
                     name=name,
+                    category=resolved_category,
                     stock=initial_stock,
                     min_stock=min_stock,
                     unit_cost=unit_cost,
@@ -104,6 +108,9 @@ class SQLAlchemyInventoryRepository(InventoryRepository):
     ) -> Product:
         with self._session_factory() as session, session.begin():
             product = self._locked_product(session, product_id)
+            if "name" in changes and "category" not in changes:
+                changes = dict(changes)
+                changes["category"] = infer_category(str(changes["name"]))
             for field, value in changes.items():
                 setattr(product, field, value)
             product.updated_by_user_id = updated_by_user_id
@@ -150,6 +157,49 @@ class SQLAlchemyInventoryRepository(InventoryRepository):
                 for row in imported_rows
             )
             return sorted(history, key=lambda item: item.occurred_at)
+
+    def reclassify_categories(self) -> int:
+        with self._session_factory() as session, session.begin():
+            products = session.scalars(select(Product)).all()
+            updated = 0
+            for product in products:
+                inferred = infer_category(product.name)
+                if product.category != inferred:
+                    product.category = inferred
+                    updated += 1
+            return updated
+
+    def monthly_rotation_summary(self) -> list[tuple[str, float, float]]:
+        with self._session_factory() as session:
+            movements = session.execute(
+                select(
+                    InventoryMovement.occurred_at,
+                    InventoryMovement.entries,
+                    InventoryMovement.exits,
+                )
+            ).all()
+            sales = session.execute(select(Sale.sold_at, Sale.quantity)).all()
+            purchases = session.execute(select(Purchase.purchased_at, Purchase.quantity)).all()
+
+            buckets: dict[str, list[float]] = {}
+            for occurred_at, entries, exits in movements:
+                key = f"{occurred_at.year:04d}-{occurred_at.month:02d}"
+                bucket = buckets.setdefault(key, [0.0, 0.0])
+                bucket[0] += float(abs(entries or 0))
+                bucket[1] += float(abs(exits or 0))
+            for sold_at, qty in sales:
+                key = f"{sold_at.year:04d}-{sold_at.month:02d}"
+                bucket = buckets.setdefault(key, [0.0, 0.0])
+                bucket[1] += float(abs(qty or 0))
+            for purchased_at, qty in purchases:
+                key = f"{purchased_at.year:04d}-{purchased_at.month:02d}"
+                bucket = buckets.setdefault(key, [0.0, 0.0])
+                bucket[0] += float(abs(qty or 0))
+
+            return [
+                (period, round(vals[0], 2), round(vals[1], 2))
+                for period, vals in sorted(buckets.items())[-12:]
+            ]
 
     @staticmethod
     def _locked_product(session: Session, product_id: int) -> Product:

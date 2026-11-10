@@ -23,6 +23,7 @@ class InventoryRepository(ABC):
         min_stock: int,
         unit_cost: Decimal,
         sale_price: Decimal,
+        category: str | None = None,
     ) -> Product:
         raise NotImplementedError
 
@@ -55,3 +56,9 @@ class InventoryRepository(ABC):
     @abstractmethod
     def purchases_history(self, product_id: int) -> list[MovementRecord]:
         raise NotImplementedError
+
+    def reclassify_categories(self) -> int:
+        return 0
+
+    def monthly_rotation_summary(self) -> list[tuple[str, float, float]]:
+        return []

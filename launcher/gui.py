@@ -185,7 +185,13 @@ class MarcanoControl(tk.Tk):
 
     def _handle_open_log_folder(self) -> None:
         log_folder = self.manager.log_path.parent
-        os.startfile(log_folder)  # noqa: S606
+        log_folder.mkdir(parents=True, exist_ok=True)
+        if hasattr(os, "startfile"):
+            os.startfile(log_folder)  # noqa: S606
+        else:
+            import subprocess
+
+            subprocess.Popen(["xdg-open", str(log_folder)])
 
     def _on_close(self) -> None:
         if self.manager.state != AppState.STOPPED:

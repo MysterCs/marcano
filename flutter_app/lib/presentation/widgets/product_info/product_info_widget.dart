@@ -28,6 +28,7 @@ class ProductInfoWidget extends StatefulWidget {
 class _ProductInfoWidgetState extends State<ProductInfoWidget> {
   late final ProductInfoFormControllers _controllers;
   late bool _isActive;
+  late String _category;
   bool _saving = false;
   bool _editing = false;
   final GlobalKey<FormState> _formKey = GlobalKey();
@@ -37,10 +38,12 @@ class _ProductInfoWidgetState extends State<ProductInfoWidget> {
     super.initState();
     _controllers = ProductInfoFormControllers.fromProduct(widget.product);
     _isActive = widget.product.isActive;
+    _category = widget.product.category;
   }
 
   Map<String, dynamic> _collectChanges() => {
         'name': _controllers.name.text.trim(),
+        'category': _category,
         'model': _controllers.model.text.trim(),
         'stock': int.tryParse(_controllers.stock.text) ?? 0,
         'min_stock': int.tryParse(_controllers.minStock.text) ?? 0,
@@ -110,6 +113,7 @@ class _ProductInfoWidgetState extends State<ProductInfoWidget> {
                       const SizedBox(height: 16),
                       ProductInfoForm(
                         name: _controllers.name,
+                        category: _category,
                         model: _controllers.model,
                         stock: _controllers.stock,
                         minStock: _controllers.minStock,
@@ -122,6 +126,8 @@ class _ProductInfoWidgetState extends State<ProductInfoWidget> {
                         formKey: _formKey,
                         onActiveChanged: (value) =>
                             setState(() => _isActive = value),
+                        onCategoryChanged: (value) =>
+                            setState(() => _category = value),
                       ),
                       const SizedBox(height: 20),
                       if (_editing)

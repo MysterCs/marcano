@@ -11,6 +11,7 @@ class Base(DeclarativeBase):
 
 
 PRODUCT_MIGRATION_COLUMNS: dict[str, str] = {
+    "category": "VARCHAR(100)",
     "updated_by_user_id": "INTEGER",
     "updated_by_user_name": "VARCHAR(150)",
     "updated_at": "TIMESTAMP",
@@ -55,3 +56,23 @@ class Database:
                     connection.execute(
                         text(f"ALTER TABLE products ADD COLUMN {name} {column_type}")
                     )
+        self._backfill_product_categories()
+
+    def _backfill_product_categories(self) -> None:
+        from sqlalchemy import or_, select
+
+        from marcano.domain.categories import DEFAULT_CATEGORY, infer_category
+        from marcano.infrastructure.models import Product
+
+        with self.session_factory() as session, session.begin():
+            unclassified = session.scalars(
+                select(Product).where(
+                    or_(
+                        Product.category.is_(None),
+                        Product.category == "",
+                        Product.category == DEFAULT_CATEGORY,
+                    )
+                )
+            ).all()
+            for product in unclassified:
+                product.category = infer_category(product.name)

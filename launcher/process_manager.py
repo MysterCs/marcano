@@ -91,7 +91,7 @@ class AppProcessManager:
                 encoding="utf-8",
                 errors="replace",
                 bufsize=1,
-                creationflags=subprocess.CREATE_NO_WINDOW,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
             )
             self._paused = False
             self._reader_thread = threading.Thread(
@@ -172,4 +172,7 @@ class AppProcessManager:
 
     @property
     def _python_path(self) -> Path:
-        return self.project_root / ".venv" / "Scripts" / "python.exe"
+        windows_python = self.project_root / ".venv" / "Scripts" / "python.exe"
+        if windows_python.is_file():
+            return windows_python
+        return self.project_root / ".venv" / "bin" / "python"

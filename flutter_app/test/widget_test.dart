@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:marcano_flutter/main.dart';
 
@@ -24,5 +25,15 @@ void main() {
     expect(find.text('Producto demo'), findsOneWidget);
     expect(find.text('8 uds.'), findsOneWidget);
     expect(auth.storage.token, 'saved-token');
+
+    // Navegar a Estadísticas Descriptivas
+    await tester.tap(find.text('Estadísticas'));
+    await tester.pumpAndSettle();
+    expect(find.text('Estadísticas Descriptivas'), findsOneWidget);
+
+    // Navegar a Ajustes (debe mostrar General de manera predeterminada)
+    await tester.tap(find.text('Ajustes'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('general_section')), findsOneWidget);
   });
 }

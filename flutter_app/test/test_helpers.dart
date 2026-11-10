@@ -2,6 +2,7 @@ import 'package:marcano_flutter/core/auth/auth_controller.dart';
 import 'package:marcano_flutter/data/models/auth_session.dart';
 import 'package:marcano_flutter/data/models/auth_user.dart';
 import 'package:marcano_flutter/data/models/currency.dart';
+import 'package:marcano_flutter/data/models/descriptive_statistics.dart';
 import 'package:marcano_flutter/data/models/dollar_rate.dart';
 import 'package:marcano_flutter/data/models/inventory_summary.dart';
 import 'package:marcano_flutter/data/models/product.dart';
@@ -61,6 +62,24 @@ class FakeInventoryRepository implements InventoryRepository {
     required String strategy,
   }) async =>
       [];
+
+  @override
+  Future<DescriptiveStatistics> getDescriptiveStatistics({
+    String? category,
+  }) async {
+    final products = await listProducts();
+    return DescriptiveStatistics.fromProducts(products);
+  }
+
+  @override
+  Future<List<int>> exportStatistics({
+    required String format,
+    String? category,
+  }) async =>
+      const [1, 2, 3];
+
+  @override
+  Future<int> reclassifyCategories() async => 1;
 }
 
 class FakeRateRepository implements RateRepository {

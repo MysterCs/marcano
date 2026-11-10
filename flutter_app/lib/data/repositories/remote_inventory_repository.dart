@@ -1,4 +1,5 @@
 import '../../domain/repositories/inventory_repository.dart';
+import '../models/descriptive_statistics.dart';
 import '../models/inventory_summary.dart';
 import '../models/product.dart';
 import '../models/projection_point.dart';
@@ -53,5 +54,42 @@ class RemoteInventoryRepository implements InventoryRepository {
       changes,
     ) as Map<String, dynamic>;
     return Product.fromJson(response);
+  }
+
+  @override
+  Future<DescriptiveStatistics> getDescriptiveStatistics({
+    String? category,
+  }) async {
+    final response = await _apiClient.getJson(
+      '/api/statistics/descriptive',
+      queryParameters: {
+        if (category != null && category.isNotEmpty && category != 'Todas')
+          'category': category,
+      },
+    ) as Map<String, dynamic>;
+    return DescriptiveStatistics.fromJson(response);
+  }
+
+  @override
+  Future<List<int>> exportStatistics({
+    required String format,
+    String? category,
+  }) =>
+      _apiClient.getBytes(
+        '/api/statistics/export',
+        queryParameters: {
+          'format': format,
+          if (category != null && category.isNotEmpty && category != 'Todas')
+            'category': category,
+        },
+      );
+
+  @override
+  Future<int> reclassifyCategories() async {
+    final response = await _apiClient.postJson(
+      '/api/categories/reclassify',
+      const {},
+    ) as Map<String, dynamic>;
+    return (response['updated'] as num?)?.toInt() ?? 0;
   }
 }

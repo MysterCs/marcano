@@ -18,12 +18,29 @@ class DashboardSummaryGrid extends StatelessWidget {
       spacing: 12,
       runSpacing: 12,
       children: [
-        MetricCard(title: 'Productos', value: thousands.format(summary.products)),
-        MetricCard(title: 'Unidades', value: thousands.format(summary.units)),
-        MetricCard(title: 'Stock bajo', value: thousands.format(summary.lowStock)),
+        MetricCard(
+          title: 'Productos',
+          value: thousands.format(summary.products),
+          icon: Icons.inventory_2_outlined,
+          accentColor: const Color(0xFF3B82F6),
+        ),
+        MetricCard(
+          title: 'Unidades',
+          value: thousands.format(summary.units),
+          icon: Icons.layers_outlined,
+          accentColor: const Color(0xFF10B981),
+        ),
+        MetricCard(
+          title: 'Stock bajo',
+          value: thousands.format(summary.lowStock),
+          icon: Icons.warning_amber_rounded,
+          accentColor: const Color(0xFFF97316),
+        ),
         MetricCard(
           title: 'Valor inventario',
           value: currency.format(summary.inventoryValue),
+          icon: Icons.payments_outlined,
+          accentColor: const Color(0xFFE11D48),
         ),
       ],
     );

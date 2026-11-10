@@ -20,6 +20,7 @@ class InventoryService:
         min_stock: int = 0,
         unit_cost: Decimal = Decimal("0.00"),
         sale_price: Decimal = Decimal("0.00"),
+        category: str | None = None,
     ) -> Product:
         if not sku.strip() or not name.strip():
             raise ValueError("El SKU y el nombre son obligatorios.")
@@ -28,7 +29,13 @@ class InventoryService:
         if unit_cost < 0 or sale_price < 0:
             raise ValueError("Los precios no pueden ser negativos.")
         return self._repository.create_product(
-            sku.strip(), name.strip(), initial_stock, min_stock, unit_cost, sale_price
+            sku.strip(),
+            name.strip(),
+            initial_stock,
+            min_stock,
+            unit_cost,
+            sale_price,
+            category=category,
         )
 
     def register_sale(
@@ -83,3 +90,6 @@ class InventoryService:
                 start=Decimal("0.00"),
             ),
         )
+
+    def reclassify_categories(self) -> int:
+        return self._repository.reclassify_categories()

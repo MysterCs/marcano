@@ -22,6 +22,11 @@ class HomeNavBar extends StatelessWidget {
             label: 'Inventario',
           ),
           NavigationDestination(
+            icon: Icon(Icons.insights_outlined),
+            selectedIcon: Icon(Icons.insights),
+            label: 'Estadísticas',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.show_chart_outlined),
             selectedIcon: Icon(Icons.show_chart),
             label: 'Proyecciones',
